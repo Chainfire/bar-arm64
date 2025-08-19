@@ -18,6 +18,10 @@ His commits are not included directly as I restructured them completely,
 so it should no longer break the non-arm64 builds. The big brain stuff
 on the FPU side is all him, though.
 
+Pull Request:
+
+- https://github.com/beyond-all-reason/RecoilEngine/pull/2540
+
 ## A working game directory
 
 Can't start work without it. I was not able to get the x86_64 Linux image to work directly with muvm and Fex (Electron/Node connectivity issue), but we can just install the Windows version with the Steam port the Asahi team has blessed us with.
@@ -110,27 +114,48 @@ BAR_DATA=`find ~/.steam/steam/ | grep -i "/beyond-all-reason.exe" | sed 's/\/Bey
 #### CpuTopology / Task Affinity
 
 I have added code to detect the cpu topology that "should" work on all arm64 boards. It currently selects
-all the performance cores to bind with, or all cores if no obvious difference between cores is detected.
+the first performance core cache group; using all performance cores creates stutters and audio breakups.
 
-I have however noticed that while this works for most threads, some threads appear to not get the task
-affinity applied. I don't know if this is also the case for an x86_64 Linux or Windows builds, worth 
-investigating.
-
-Additionally, at least on my MacBook (this may be different on Minis and Studios), the game performs a lot 
-better and stutters a lot less if after starting I manually taskset the process and all its threads to half
-the performance cores (cores #2-#5 in my case) or even just one! This can be somewhat mitigated by setting
-the scheduler to "performance" but that also turns the MacBook into a noisy space heater.
-
-Monitoring `lscpu --extended` explains why :)
+In essence on my box (2 efficiency cores, 2x4 performance cores), it is binding cores 2-5 out of 0-9.
 
 #### Desync testing
 
-The patches have been tested against tag 2025.04.08 (took some extra work, current set applies to master)
-and played this replay ( https://www.beyondallreason.info/replays?gameId=81eba168e6b9a20ad04beb03ed152b3e )
+The patches have been tested against tag `2025.04.08` and played this replay 
+( https://www.beyondallreason.info/replays?gameId=81eba168e6b9a20ad04beb03ed152b3e )
 start to finish without a single desync.
+
+I use the following commands to switch to `2025.04.08`:
+
+```
+git clean -fd
+git reset --hard
+merge_base=$(git merge-base master asahi)
+git checkout 2025.04.08
+git reset --hard
+git clean -fd
+git diff $merge_base..asahi -- . ':!rts/System/Platform/Threading.cpp' | git apply
+git submodule update --recursive
+(cd tools/pr-downloader && git reset --hard master)
+```
+
+And this to switch back to `asahi`:
+
+```
+git clean -fd
+git reset --hard
+git checkout asahi
+git reset --hard
+git clean -fd
+git submodule update --recursive
+```
+
+The switch to `2025.04.08` excludes `Threading.cpp` as the patches do not cleanly
+apply to it. What we lose there is optimal CPU core selection, so performance is a
+little worse and stuttering is massively worse. Those things do not matter for
+desync testing, though.
 
 ## TODO
 
 - byar-chobby, haven't looked at it yet
 - FPUCheck, this is just patched out
-- obviously there's no multiplayer (requires the correct engine version), and if there was, it could desync, needs ample testing
+
