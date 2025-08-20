@@ -118,6 +118,16 @@ the first performance core cache group; using all performance cores creates stut
 
 In essence on my box (2 efficiency cores, 2x4 performance cores), it is binding cores 2-5 out of 0-9.
 
+#### Settings
+
+Getting the best FPS depends on your settings as always.
+
+One setting in particular kills performance: `Map edge extension`. You will find it under
+`Graphics` settings when you enable `Advanced` mode.
+
+This setting can quarter FPS when enabled. While I don't know for sure why this happens,
+it does use a geometry shader, and on Asahi Linux those are emulated using compute shaders.
+
 #### Desync testing
 
 The patches have been tested against tag `2025.04.08` and played this replay 
